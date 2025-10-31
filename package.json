@@ -10,10 +10,11 @@
     "scan": "node punpkim.js"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "impit": "^0.1.9",
+    "dotenv": "^17.2.3",
+    "impit": "^0.6.1",
     "pngjs": "^7.0.0"
   }
 }
+
 
 
