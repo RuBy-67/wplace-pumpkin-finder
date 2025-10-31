@@ -46,48 +46,6 @@ async function ensureStateFile() {
   }
 }
 
-async function loadStateIndex() {
-  await ensureStateFile()
-  const index = new Map()
-  try {
-    const content = await fs.readFile(STATE_FILE, 'utf8')
-    const lines = content.split(/\r?\n/)
-    for (const line of lines) {
-      const s = line.trim()
-      if (!s) continue
-      try {
-        const obj = JSON.parse(s)
-        const k = obj.tileX !== undefined && obj.tileY !== undefined ? `${obj.tileX}_${obj.tileY}` : null
-        if (!k) continue
-        index.set(k, obj.status)
-      } catch (_) {
-        continue
-      }
-    }
-  } catch (_) {}
-  return index
-}
-
-async function loadStateTilesByStatus(targetStatus) {
-  await ensureStateFile()
-  const tiles = []
-  try {
-    const content = await fs.readFile(STATE_FILE, 'utf8')
-    const lines = content.split(/\r?\n/)
-    for (const line of lines) {
-      const s = line.trim()
-      if (!s) continue
-      try {
-        const obj = JSON.parse(s)
-        if (obj.status !== targetStatus) continue
-        if (obj.tileX === undefined || obj.tileY === undefined) continue
-        tiles.push({ x: Number(obj.tileX), y: Number(obj.tileY) })
-      } catch (_) { continue }
-    }
-  } catch (_) {}
-  return tiles
-}
-
 function isProxyUsable(idx) {
   const until = proxyQuarantine.get(idx) || 0
   return Date.now() >= until
@@ -439,5 +397,3 @@ run().catch(err => {
   console.error(err?.message || String(err))
   process.exit(1)
 })
-
-
