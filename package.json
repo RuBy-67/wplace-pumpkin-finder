@@ -1,0 +1,19 @@
+{
+  "name": "pumpkin-finder",
+  "version": "1.0.0",
+  "author": "Udyz",
+  "license": "ISC",
+  "description": "Wplace Pumpkin finder",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scan": "node punpkim.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "impit": "^0.1.9",
+    "pngjs": "^7.0.0"
+  }
+}
+
+
