@@ -188,6 +188,7 @@ async function fetchRandomTile() {
       "sec-fetch-dest": "empty",
       "sec-fetch-mode": "cors",
       "sec-fetch-site": "same-site",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
       "Referer": "https://wplace.live/"
     }
     const res = await imp.fetch(url, { headers: headers });
@@ -397,3 +398,4 @@ run().catch(err => {
   console.error(err?.message || String(err))
   process.exit(1)
 })
+
