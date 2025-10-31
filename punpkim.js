@@ -334,10 +334,7 @@ async function processTile(tileX, tileY) {
     for (const t of tmpls) {
       const tHit = matchTemplate(png, t.png, COLOR_TOLERANCE)
       if (tHit) {
-        MATCH_COUNT++
-        if (process && process.stdout && typeof process.stdout.write === 'function') {
-          process.stdout.write(`\rfound: ${MATCH_COUNT} | no match: ${NO_MATCH_COUNT}`)
-        }
+        // Ne pas incrémenter MATCH_COUNT ici, on le fera dans worker après vérification "Player"
         return { tileX, tileY, url, ...tHit, method: 'template', templatePath: t.path }
       }
     }
@@ -426,15 +423,29 @@ async function run() {
         // Hors TEST_MODE: ne remonter que si peinte par "Player"
         if (!TEST_MODE) {
           if (foundItem.paintedByName === 'Player' && foundItem.eventClaimNumber) {
+            MATCH_COUNT++
             const who = foundItem.paintedByName ? foundItem.paintedByName : `#${foundItem.eventClaimNumber}`
             console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> peinte par ${who} (${foundItem.link})`)
             try { await fs.appendFile(STATE_FILE, JSON.stringify(foundItem) + '\n') } catch (_) {}
+            if (process && process.stdout && typeof process.stdout.write === 'function') {
+              process.stdout.write(`\rfound: ${MATCH_COUNT} | no match: ${NO_MATCH_COUNT}`)
+            }
+          } else {
+            // Match template mais pas peinte par "Player", compte comme "no match" pour le compteur
+            NO_MATCH_COUNT++
+            if (process && process.stdout && typeof process.stdout.write === 'function') {
+              process.stdout.write(`\rfound: ${MATCH_COUNT} | no match: ${NO_MATCH_COUNT}`)
+            }
           }
         } else {
           // En TEST_MODE: comportement complet existant
           if (foundItem.eventClaimNumber) {
+            MATCH_COUNT++
             const who = foundItem.paintedByName ? foundItem.paintedByName : `#${foundItem.eventClaimNumber}`
             console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> peinte par ${who} (${foundItem.link})`)
+            if (process && process.stdout && typeof process.stdout.write === 'function') {
+              process.stdout.write(`\rfound: ${MATCH_COUNT} | no match: ${NO_MATCH_COUNT}`)
+            }
           }
           try { await fs.appendFile(STATE_FILE, JSON.stringify(foundItem) + '\n') } catch (_) {}
         }
