@@ -316,11 +316,8 @@ async function processTile(tileX, tileY) {
     }
     const tHit = matchTemplate(png, tmpl, COLOR_TOLERANCE)
     if (tHit) return { tileX, tileY, url, ...tHit, method: 'template' }
-    const center = pixeltoCoords(tileX, tileY, 500, 500)
-    const link = `https://wplace.live/?lat=${center.lat}&lng=${center.lon}&zoom=14.5`
-    const stateNo = { status: 'skip_no_match', tileX, tileY, url, link, ts: Date.now() }
-    // console.log(JSON.stringify(stateNo))
-    try { await fs.appendFile(STATE_FILE, JSON.stringify(stateNo) + '\n') } catch (_) {}
+    console.log(`tile ${tileX}_${tileY} no match`)
+    // no match: silencieux (ne rien logguer)
   } catch (_) {
     console.error(`processTile error ${tileX}_${tileY}:`, _?.message || String(_))
     return null
