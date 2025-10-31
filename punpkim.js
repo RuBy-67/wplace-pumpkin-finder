@@ -12,9 +12,9 @@ const CONCURRENCY = 20
 const RANDOM_COUNT = 100000
 const COLOR_TOLERANCE = 25
 
-const TEST_MODE = false
-const TEST_X = 1617
-const TEST_Y = 839
+const TEST_MODE = true
+const TEST_X = 1261
+const TEST_Y = 1048
 
 let loadedProxies = []
 let currentProxyIndex = 0
