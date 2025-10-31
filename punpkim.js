@@ -5,12 +5,12 @@ import fs from 'fs/promises'
 
 const BASE_URL = 'https://backend.wplace.live/files/s0/tiles'
 const API_BASE = 'https://backend.wplace.live/s0'
-const TEMPLATE_PATH = './pumpkin-template.png'
+const TEMPLATE_PATHS = ['./pumpkin-template.png', './template2.png', './template3.png']
 const PROXIES_FILE = './proxies.txt'
 const STATE_FILE = './state.json'
-const CONCURRENCY = 16
+const CONCURRENCY = 20
 const RANDOM_COUNT = 100000
-const COLOR_TOLERANCE = 20
+const COLOR_TOLERANCE = 25
 
 const TEST_MODE = false
 const TEST_X = 1617
@@ -21,6 +21,7 @@ let currentProxyIndex = 0
 const proxyQuarantine = new Map()
 let NO_MATCH_COUNT = 0
 let MATCH_COUNT = 0
+let CACHED_TEMPLATES = null
 
 function normalizeProxyLine(line) {
   const trimmed = line.trim()
@@ -259,13 +260,27 @@ function matchTemplate(png, template, tolerance) {
   return best
 }
 
-async function loadTemplate() {
-  if (TEMPLATE_PATH) {
-    const fs = await import('fs')
-    const buf = fs.readFileSync(TEMPLATE_PATH)
-    return parsePng(buf)
+async function loadTemplates() {
+  const fsMod = await import('fs')
+  const loaded = []
+  for (const p of TEMPLATE_PATHS) {
+    try {
+      if (!p) continue
+      const buf = fsMod.readFileSync(p)
+      // eslint-disable-next-line no-await-in-loop
+      const png = await parsePng(buf)
+      loaded.push({ path: p, png })
+    } catch (_) {
+      // ignore missing/unreadable templates
+    }
   }
-  return null
+  return loaded
+}
+
+async function getTemplatesCached() {
+  if (CACHED_TEMPLATES && Array.isArray(CACHED_TEMPLATES) && CACHED_TEMPLATES.length) return CACHED_TEMPLATES
+  CACHED_TEMPLATES = await loadTemplates()
+  return CACHED_TEMPLATES
 }
 
 async function parsePng(buffer) {
@@ -310,19 +325,21 @@ async function processTile(tileX, tileY) {
   try {
     const png = await parsePng(resp.buffer)
     // console.log(`PNG parsed ${png.width}x${png.height} at ${tileX}_${tileY}`)
-    const tmpl = await loadTemplate()
-    if (!tmpl) return null
+    const tmpls = await getTemplatesCached()
+    if (!tmpls.length) return null
     if (!globalThis.__tmpl_info_logged) {
-      // console.log(`Template loaded ${tmpl.width}x${tmpl.height}`)
+      // console.log(`Templates loaded: ${tmpls.map(t => t.path).join(', ')}`)
       globalThis.__tmpl_info_logged = true
     }
-    const tHit = matchTemplate(png, tmpl, COLOR_TOLERANCE)
-    if (tHit) {
-      MATCH_COUNT++
-      if (process && process.stdout && typeof process.stdout.write === 'function') {
-        process.stdout.write(`\rfound: ${MATCH_COUNT} | no match: ${NO_MATCH_COUNT}`)
+    for (const t of tmpls) {
+      const tHit = matchTemplate(png, t.png, COLOR_TOLERANCE)
+      if (tHit) {
+        MATCH_COUNT++
+        if (process && process.stdout && typeof process.stdout.write === 'function') {
+          process.stdout.write(`\rfound: ${MATCH_COUNT} | no match: ${NO_MATCH_COUNT}`)
+        }
+        return { tileX, tileY, url, ...tHit, method: 'template', templatePath: t.path }
       }
-      return { tileX, tileY, url, ...tHit, method: 'template' }
     }
     NO_MATCH_COUNT++
     if (process && process.stdout && typeof process.stdout.write === 'function') {
