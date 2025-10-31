@@ -1,0 +1,5 @@
+# Support: protocol://[USERNAME:PASSWORD@]PROXY:PORT | protocol://PROXY:PORT
+# Protocol: socks5, http
+# ex:
+# http://123.123.123.123
+# http://ex@ex@123.123.123.123:80
