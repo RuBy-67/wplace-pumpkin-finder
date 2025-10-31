@@ -9,11 +9,7 @@ const TEMPLATE_PATH = './pumpkin-template.png'
 const PROXIES_FILE = './proxies.txt'
 const STATE_FILE = './state.json'
 const CONCURRENCY = 16
-const RANDOM_COUNT = 1000
-const RANDOM_BATCH = 10
-const RANGE_MODE = false
-const RANGE_PADDING = 1
-const WORLD_MAX = 2047
+const RANDOM_COUNT = 100000
 const COLOR_TOLERANCE = 20
 
 const TEST_MODE = false
@@ -396,82 +392,19 @@ async function run() {
     process.exit(1)
   }
 
-  if (RANGE_MODE) console.log(`Range scanning from state skip_no_match padding=${RANGE_PADDING} concurrency=${CONCURRENCY}`)
-  else console.log(`Random scanning count=${RANDOM_COUNT} batch=${RANDOM_BATCH} concurrency=${CONCURRENCY}`)
-  console.log(`Template mode enabled tolerance=${COLOR_TOLERANCE}`)
-  const stateIndex = await loadStateIndex()
-  const shouldSkipStatus = new Set(['skip_404', 'skip_no_match', 'found'])
-  const tasks = []
+  console.log(`Random scanning count=${RANDOM_COUNT} concurrency=${CONCURRENCY}`)
   const seen = new Set()
-  async function fetchRandomBatch(count) {
-    let added = 0
-    let guard = 0
-    while (added < count && guard < count * 20) {
-      guard++
-      const rt = await fetchRandomTile()
-      if (!rt) continue
-      const key = `${rt.x}_${rt.y}`
-      if (seen.has(key)) continue
-      const prev = stateIndex.get(key)
-      if (prev && shouldSkipStatus.has(prev)) continue
-      seen.add(key)
-      tasks.push({ x: rt.x, y: rt.y })
-      // console.log(`added random tile: ${key}`)
-      added++
-    }
-    return added
-  }
-
-  if (RANGE_MODE) {
-    const bases = await loadStateTilesByStatus('skip_no_match')
-    for (const t of bases) {
-      for (let dy = -RANGE_PADDING; dy <= RANGE_PADDING; dy++) {
-        for (let dx = -RANGE_PADDING; dx <= RANGE_PADDING; dx++) {
-          const nx = t.x + dx
-          const ny = t.y + dy
-          if (nx < 0 || ny < 0 || nx > WORLD_MAX || ny > WORLD_MAX) continue
-          const key = `${nx}_${ny}`
-          if (seen.has(key)) continue
-          const prev = stateIndex.get(key)
-          if (prev && shouldSkipStatus.has(prev)) continue
-          seen.add(key)
-          tasks.push({ x: nx, y: ny })
-        }
-      }
-    }
-    for (let i = tasks.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      const t = tasks[i]; tasks[i] = tasks[j]; tasks[j] = t
-    }
-  } else {
-    await fetchRandomBatch(Math.min(RANDOM_BATCH, Math.max(1, RANDOM_COUNT)))
-  }
-
-  let index = 0
-  const foundAll = []
-
+  let processed = 0
   async function worker() {
     while (true) {
-      let i = index++
-      if (i >= tasks.length) {
-        if (RANGE_MODE) return
-        const remainingNeeded = RANDOM_COUNT - tasks.length
-        if (remainingNeeded <= 0) return
-        const added = await fetchRandomBatch(Math.min(RANDOM_BATCH, remainingNeeded))
-        if (added === 0) return
-        // After refilling, grab next index and continue
-        i = index++
-        if (i >= tasks.length) return
-      }
-      const { x, y } = tasks[i]
-      const res = await processTile(x, y)
-      // Opportunistic top-up (non-blocking path)
-      if (!RANGE_MODE && RANDOM_COUNT > 0) {
-        const remainingNeeded = RANDOM_COUNT - tasks.length
-        if (remainingNeeded > 0 && (i + CONCURRENCY) >= tasks.length) {
-          await fetchRandomBatch(Math.min(RANDOM_BATCH, remainingNeeded))
-        }
-      }
+      if (processed >= RANDOM_COUNT) return
+      const rt = await fetchRandomTile()
+      if (!rt) { await sleep(10); continue }
+      const key = `${rt.x}_${rt.y}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      processed++
+      const res = await processTile(rt.x, rt.y)
       if (res) {
         const evt = await checkPixelinfo(res.tileX, res.tileY, res.pixelX, res.pixelY)
         let extra = {}
@@ -491,16 +424,15 @@ async function run() {
           link: extra.link,
           ts: Date.now()
         }
-        foundAll.push(foundItem)
-        console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> ${foundItem.eventClaimNumber ? '#' + foundItem.eventClaimNumber : 'Not event'} (${foundItem.link})`)
+        if (foundItem.eventClaimNumber) {
+          console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> #${foundItem.eventClaimNumber} (${foundItem.link})`)
+        }
         try { await fs.appendFile(STATE_FILE, JSON.stringify(foundItem) + '\n') } catch (_) {}
       }
     }
   }
-
-  const workers = Array.from({ length: Math.max(1, CONCURRENCY) }, () => worker())
-  await Promise.all(workers)
-  if (foundAll.length === 0) console.log(JSON.stringify({ status: 'not_found' }))
+  await Promise.all(Array.from({ length: Math.max(1, CONCURRENCY) }, () => worker()))
+  console.log(JSON.stringify({ status: 'not_found', processed }))
 }
 
 run().catch(err => {
