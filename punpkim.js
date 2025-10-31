@@ -316,7 +316,6 @@ async function processTile(tileX, tileY) {
     }
     const tHit = matchTemplate(png, tmpl, COLOR_TOLERANCE)
     if (tHit) return { tileX, tileY, url, ...tHit, method: 'template' }
-    console.log(`tile ${tileX}_${tileY} no match`)
     // no match: silencieux (ne rien logguer)
   } catch (_) {
     console.error(`processTile error ${tileX}_${tileY}:`, _?.message || String(_))
