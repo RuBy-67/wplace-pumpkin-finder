@@ -8,7 +8,7 @@ const API_BASE = 'https://backend.wplace.live/s0'
 const TEMPLATE_PATHS = ['./pumpkin-template.png', './template2.png', './template3.png']
 const PROXIES_FILE = './proxies.txt'
 const STATE_FILE = './state.json'
-const CONCURRENCY = 20
+const CONCURRENCY = 25
 const RANDOM_COUNT = 100000
 const COLOR_TOLERANCE = 25
 
@@ -423,11 +423,21 @@ async function run() {
           link: link,
           ts: Date.now()
         }
-        if (foundItem.eventClaimNumber) {
-          const who = foundItem.paintedByName ? foundItem.paintedByName : `#${foundItem.eventClaimNumber}`
-          console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> peinte par ${who} (${foundItem.link})`)
+        // Hors TEST_MODE: ne remonter que si peinte par "Player"
+        if (!TEST_MODE) {
+          if (foundItem.paintedByName === 'Player' && foundItem.eventClaimNumber) {
+            const who = foundItem.paintedByName ? foundItem.paintedByName : `#${foundItem.eventClaimNumber}`
+            console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> peinte par ${who} (${foundItem.link})`)
+            try { await fs.appendFile(STATE_FILE, JSON.stringify(foundItem) + '\n') } catch (_) {}
+          }
+        } else {
+          // En TEST_MODE: comportement complet existant
+          if (foundItem.eventClaimNumber) {
+            const who = foundItem.paintedByName ? foundItem.paintedByName : `#${foundItem.eventClaimNumber}`
+            console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> peinte par ${who} (${foundItem.link})`)
+          }
+          try { await fs.appendFile(STATE_FILE, JSON.stringify(foundItem) + '\n') } catch (_) {}
         }
-        try { await fs.appendFile(STATE_FILE, JSON.stringify(foundItem) + '\n') } catch (_) {}
       }
     }
   }
