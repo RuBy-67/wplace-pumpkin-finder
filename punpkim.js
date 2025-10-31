@@ -348,8 +348,13 @@ async function run() {
       }
       if (evt.ok) {
         out.eventClaimNumber = evt.json.paintedBy?.eventClaimNumber
+        out.paintedByName = evt.json.paintedBy?.username || evt.json.paintedBy?.name || evt.json.paintedBy?.displayName || evt.json.paintedBy?.id || null
         const coords = pixeltoCoords(res.tileX, res.tileY, res.pixelX, res.pixelY)
         out.link = `https://wplace.live/?lat=${coords.lat}&lng=${coords.lon}&zoom=14.5`
+      }
+      if (out.eventClaimNumber) {
+        const who = out.paintedByName ? out.paintedByName : `#${out.eventClaimNumber}`
+        console.log(`${out.tileX}/${out.tileY}@${out.pixelX},${out.pixelY} -> peinte par ${who} (${out.link})`)
       }
       console.log(JSON.stringify(out))
       try { await fs.appendFile(STATE_FILE, JSON.stringify(out) + '\n') } catch (_) {}
@@ -382,18 +387,20 @@ async function run() {
       const link = `https://wplace.live/?lat=${coords.lat}&lng=${coords.lon}&zoom=14.5`
       const evt = await checkPixelinfo(res.tileX, res.tileY, res.pixelX, res.pixelY)
         const foundItem = {
-          status: '-- pumpkin-found --',
+          status: '-- PUMPKIN-FOUND --',
           tileX: res.tileX,
           tileY: res.tileY,
           pixelX: res.pixelX,
           pixelY: res.pixelY,
           tileUrl: res.url,
-        eventClaimNumber: evt.ok ? evt.json?.paintedBy?.eventClaimNumber : undefined,
-        link: link,
+          eventClaimNumber: evt.ok ? evt.json?.paintedBy?.eventClaimNumber : undefined,
+          paintedByName: evt.ok ? (evt.json?.paintedBy?.username || evt.json?.paintedBy?.name || evt.json?.paintedBy?.displayName || evt.json?.paintedBy?.id || undefined) : undefined,
+          link: link,
           ts: Date.now()
         }
         if (foundItem.eventClaimNumber) {
-          console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> #${foundItem.eventClaimNumber} (${foundItem.link})`)
+          const who = foundItem.paintedByName ? foundItem.paintedByName : `#${foundItem.eventClaimNumber}`
+          console.log(`${foundItem.tileX}/${foundItem.tileY}@${foundItem.pixelX},${foundItem.pixelY} -> peinte par ${who} (${foundItem.link})`)
         }
         try { await fs.appendFile(STATE_FILE, JSON.stringify(foundItem) + '\n') } catch (_) {}
       }
