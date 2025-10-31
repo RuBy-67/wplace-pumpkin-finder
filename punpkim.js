@@ -280,21 +280,27 @@ async function processTile(tileX, tileY) {
   // console.log(`Process tile ${tileX}_${tileY}`)
   const resp = await fetchPng(url)
   if (!resp) {
-    const state = { status: 'error', tileX, tileY, url, ts: Date.now() }
+    const center = pixeltoCoords(tileX, tileY, 500, 500)
+    const link = `https://wplace.live/?lat=${center.lat}&lng=${center.lon}&zoom=14.5`
+    const state = { status: 'error', tileX, tileY, url, link, ts: Date.now() }
     // console.log(JSON.stringify(state))
     try { await fs.appendFile(STATE_FILE, JSON.stringify(state) + '\n') } catch (_) {}
     return null
   }
   // console.log(`HTTP ${resp.statusCode} ${url}`)
   if (resp.statusCode === 404) {
-    const state404 = { status: 'skip_404', tileX, tileY, url, ts: Date.now() }
+    const center = pixeltoCoords(tileX, tileY, 500, 500)
+    const link = `https://wplace.live/?lat=${center.lat}&lng=${center.lon}&zoom=14.5`
+    const state404 = { status: 'skip_404', tileX, tileY, url, link, ts: Date.now() }
     // console.log(JSON.stringify(state404))
     try { await fs.appendFile(STATE_FILE, JSON.stringify(state404) + '\n') } catch (_) {}
     return null
   }
   if (resp.statusCode !== 200 || !resp.buffer) {
     // Other non-OK statuses are treated as transient errors
-    const st = { status: 'error_http', code: resp.statusCode, tileX, tileY, url, ts: Date.now() }
+    const center = pixeltoCoords(tileX, tileY, 500, 500)
+    const link = `https://wplace.live/?lat=${center.lat}&lng=${center.lon}&zoom=14.5`
+    const st = { status: 'error_http', code: resp.statusCode, tileX, tileY, url, link, ts: Date.now() }
     // console.log(JSON.stringify(st))
     try { await fs.appendFile(STATE_FILE, JSON.stringify(st) + '\n') } catch (_) {}
     return null
@@ -310,7 +316,9 @@ async function processTile(tileX, tileY) {
     }
     const tHit = matchTemplate(png, tmpl, COLOR_TOLERANCE)
     if (tHit) return { tileX, tileY, url, ...tHit, method: 'template' }
-    const stateNo = { status: 'skip_no_match', tileX, tileY, url, ts: Date.now() }
+    const center = pixeltoCoords(tileX, tileY, 500, 500)
+    const link = `https://wplace.live/?lat=${center.lat}&lng=${center.lon}&zoom=14.5`
+    const stateNo = { status: 'skip_no_match', tileX, tileY, url, link, ts: Date.now() }
     // console.log(JSON.stringify(stateNo))
     try { await fs.appendFile(STATE_FILE, JSON.stringify(stateNo) + '\n') } catch (_) {}
   } catch (_) {
@@ -354,6 +362,8 @@ async function run() {
   console.log(`Random scanning count=${RANDOM_COUNT} concurrency=${CONCURRENCY}`)
   const seen = new Set()
   let processed = 0
+  let lastTileUrl = null
+  let lastTileLink = null
   async function worker() {
     while (true) {
       if (processed >= RANDOM_COUNT) return
@@ -362,25 +372,24 @@ async function run() {
       const key = `${rt.x}_${rt.y}`
       if (seen.has(key)) continue
       seen.add(key)
+      lastTileUrl = buildTileUrl(rt.x, rt.y)
+      const center = pixeltoCoords(rt.x, rt.y, 500, 500)
+      lastTileLink = `https://wplace.live/?lat=${center.lat}&lng=${center.lon}&zoom=14.5`
       processed++
       const res = await processTile(rt.x, rt.y)
       if (res) {
-        const evt = await checkPixelinfo(res.tileX, res.tileY, res.pixelX, res.pixelY)
-        let extra = {}
-        if (evt.ok) {
-          extra.api = evt.json
-          const coords = pixeltoCoords(res.tileX, res.tileY, res.pixelX, res.pixelY)
-          extra.link = `https://wplace.live/?lat=${coords.lat}&lng=${coords.lon}&zoom=14.5`
-        }
+      const coords = pixeltoCoords(res.tileX, res.tileY, res.pixelX, res.pixelY)
+      const link = `https://wplace.live/?lat=${coords.lat}&lng=${coords.lon}&zoom=14.5`
+      const evt = await checkPixelinfo(res.tileX, res.tileY, res.pixelX, res.pixelY)
         const foundItem = {
-          status: 'found',
+          status: '-- pumpkin-found --',
           tileX: res.tileX,
           tileY: res.tileY,
           pixelX: res.pixelX,
           pixelY: res.pixelY,
           tileUrl: res.url,
-          eventClaimNumber: extra.api?.paintedBy?.eventClaimNumber,
-          link: extra.link,
+        eventClaimNumber: evt.ok ? evt.json?.paintedBy?.eventClaimNumber : undefined,
+        link: link,
           ts: Date.now()
         }
         if (foundItem.eventClaimNumber) {
@@ -391,7 +400,7 @@ async function run() {
     }
   }
   await Promise.all(Array.from({ length: Math.max(1, CONCURRENCY) }, () => worker()))
-  console.log(JSON.stringify({ status: 'not_found', processed }))
+  console.log(JSON.stringify({ status: 'not_found', processed, tileUrl: lastTileUrl, link: lastTileLink }))
 }
 
 run().catch(err => {

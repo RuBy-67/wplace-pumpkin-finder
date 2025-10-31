@@ -1,5 +1,9 @@
 # wplace-pumpkin-finder
 Wplace pumpkin finder script
+
+initial repo 
+=> https://github.com/Udyz/wplace-pumpkin-finder
+
 > [!WARNING]  
 > **Use at your own risk**
 
