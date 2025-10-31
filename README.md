@@ -1,6 +1,7 @@
 # wplace-pumpkin-finder
-Wplace pumpkin finder
-> Use at your own risk
+Wplace pumpkin finder script
+> [!WARNING]  
+> **Use at your own risk**
 
 # Install #
 `npm install`
@@ -8,4 +9,4 @@ Wplace pumpkin finder
 # Run #
 `npm run scan`
 
-<img width="1063" height="254" alt="{803BA92A-0BF9-4B0E-AFAB-14D59AAF5D8A}" src="https://github.com/user-attachments/assets/ebe2455c-8cb5-4947-a096-8ab6a5c22fc3" />
+<img width="1005" height="217" alt="{E588CEAE-E227-4CAA-8699-45964F2F7D8D}" src="https://github.com/user-attachments/assets/b3222126-a36f-4bc5-b693-77c6912c5177" />
