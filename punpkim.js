@@ -19,6 +19,8 @@ const TEST_Y = 839
 let loadedProxies = []
 let currentProxyIndex = 0
 const proxyQuarantine = new Map()
+let NO_MATCH_COUNT = 0
+let MATCH_COUNT = 0
 
 function normalizeProxyLine(line) {
   const trimmed = line.trim()
@@ -315,8 +317,17 @@ async function processTile(tileX, tileY) {
       globalThis.__tmpl_info_logged = true
     }
     const tHit = matchTemplate(png, tmpl, COLOR_TOLERANCE)
-    if (tHit) return { tileX, tileY, url, ...tHit, method: 'template' }
-    console.log(`tile ${tileX}_${tileY} no match`)
+    if (tHit) {
+      MATCH_COUNT++
+      if (process && process.stdout && typeof process.stdout.write === 'function') {
+        process.stdout.write(`\rfound: ${MATCH_COUNT} | no match: ${NO_MATCH_COUNT}`)
+      }
+      return { tileX, tileY, url, ...tHit, method: 'template' }
+    }
+    NO_MATCH_COUNT++
+    if (process && process.stdout && typeof process.stdout.write === 'function') {
+      process.stdout.write(`\rfound: ${MATCH_COUNT} | no match: ${NO_MATCH_COUNT}`)
+    }
     // no match: silencieux (ne rien logguer)
   } catch (_) {
     console.error(`processTile error ${tileX}_${tileY}:`, _?.message || String(_))
